@@ -16,7 +16,6 @@ defmodule Ppool do
     PpoolSupersup.stop_pool(name)
   end
 
-  # TODO: What does this do?
   def run(name, args) do
     PpoolServ.run(name, args)
   end
@@ -27,6 +26,14 @@ defmodule Ppool do
 
   def async_queue(name, args) do
     PpoolServ.async_queue(name, args)
+  end
+
+  # TODO: REMOVE LATER
+  def run do
+    Ppool.start_link
+    Ppool.start_pool(:nagger, 2, {PpoolNagger, :start, []})
+    Ppool.run(:nagger, ["finish the chapter!", 5000, 2, self])
+    Ppool.run(:nagger, ["Watch a good movie", 5000, 2, self])
   end
 
 end

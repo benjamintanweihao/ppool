@@ -1,17 +1,14 @@
 defmodule PpoolSupersup do
   use Supervisor
 
-  @max_restart 6
-  @max_time    3600
-
   def start_link do
     Supervisor.start_link(__MODULE__, [], name: __MODULE__)
   end
 
   def init([]) do
     opts = [strategy: :one_for_one,
-            max_restart: @max_restart,
-            max_time: @max_time]
+            max_restart: 6,
+            max_time: 3600]
 
     supervise([], opts)
   end

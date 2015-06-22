@@ -1,17 +1,20 @@
 defmodule PpoolServ do
   use GenServer
+  import Supervisor.Spec
 
   defmodule State do
-    defstruct limit: 0, sup: nil, refs: nil, queue: :queue.new
+    defstruct limit: 0, sup: nil, refs: :gb_sets.empty, queue: :queue.new
   end
 
-  def start_link(name, limit, sup, mfa) when is_atom(name) and is_integer(limit) do
-    IO.puts "Starting #{__MODULE__} #{inspect self}"
-    GenServer.start_link(__MODULE__, {limit, mfa, sup}, name: name)
+  #######
+  # API #
+  #######
+
+  def start_link(name, limit, ppool_sup, mfa) when is_atom(name) and is_integer(limit) do
+    GenServer.start_link(__MODULE__, {limit, mfa, ppool_sup}, name: name)
   end
 
   def run(name, args) do
-    IO.puts "#{inspect args}"
     GenServer.call(name, {:run, args})
   end
 
@@ -28,25 +31,33 @@ defmodule PpoolServ do
   end
 
   defp supervisor_spec(mfa) do
-    opts = [shutdown: 10000]
-    Supervisor.supervise([Supervisor.supervisor(PpoolWorkerSup, [mfa], opts)], [shutdown: :temporary])
+    opts = [shutdown: 10000, restart: :temporary]
+    supervisor(PpoolWorkerSup, [mfa], opts)
+  end
+
+  #############
+  # Callbacks #
+  #############
+
+  def init({limit, mfa, ppool_sup}) do
+    send(self, {:start_worker_supervisor, ppool_sup, mfa})
+    {:ok, %State{limit: limit}}
   end
 
   def handle_call({:run, args}, _from, s = %State{limit: n, sup: sup, refs: refs}) when n > 0 do
-    IO.puts "Starting child with #{inspect args}"
     {:ok, pid} = Supervisor.start_child(sup, args)
     ref = Process.monitor(pid)
-    {:reply, {:ok, pid}, %{s | limit: n-1, refs: :gb_sets.add(refs, ref)}}
+    {:reply, {:ok, pid}, %{s | limit: n-1, refs: :gb_sets.add(ref, refs)}}
   end
 
   def handle_call({:run, _args}, _from, s = %State{limit: n}) when n <= 0 do
     {:reply, :noalloc, s}
   end
 
-  def handle_call({:sync, args}, _from, s = %State{limit: n, sup: sup, refs: r}) when n > 0 do
+  def handle_call({:sync, args}, _from, s = %State{limit: n, sup: sup, refs: refs}) when n > 0 do
     {:ok, pid} = Supervisor.start_child(sup, args)
     ref = Process.monitor(pid)
-    {:reply, {:ok, pid}, %{s | limit: n-1, refs: :gb_sets.add(ref, r)}}
+    {:reply, {:ok, pid}, %{s | limit: n-1, refs: :gb_sets.add(ref, refs)}}
   end
 
   def handle_call({:sync, args}, from, s = %State{queue: q}) do
@@ -61,10 +72,10 @@ defmodule PpoolServ do
     {:noreply, state}
   end
 
-  def handle_cast({:async, args}, s = %State{limit: n, sup: sup, refs: r}) when n > 0 do
+  def handle_cast({:async, args}, s = %State{limit: n, sup: sup, refs: refs}) when n > 0 do
     {:ok, pid} = Supervisor.start_child(sup, args)
     ref = Process.monitor(pid)
-    {:noreply, %{s | limit: n-1, refs: :gb_sets.add(ref, r)}}
+    {:noreply, %{s | limit: n-1, refs: :gb_sets.add(ref, refs)}}
   end
 
   def handle_cast({:async, args}, s = %State{queue: q}) do

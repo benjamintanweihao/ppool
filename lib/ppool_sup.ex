@@ -2,7 +2,6 @@ defmodule PpoolSup do
   use Supervisor
 
   def start_link(name, limit, mfa) do
-    IO.puts "Staring #{__MODULE__} #{inspect self}"
     Supervisor.start_link(__MODULE__, {name, limit, mfa})
   end
 
