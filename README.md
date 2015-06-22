@@ -12,16 +12,16 @@ From Robert Virding:
 
 > ... Also in this case the second argument to supervisor:start_child/2 must be a list and NOT a ChildSpec. This list is a list of extra arguments which is appended to the argument list given in the default ChildSpec and it is this combined argument list which is used when calling the child's start function. This is how the simple_one_for_one children all can use the same ChildSpec and still can get in specific arguments to them.
 
-```
+```elixir
 Ppool.run(:nagger, ["Go home", 5000, 2, self])
 ```
 
-```
+```elixir
 Ppool.sync_queue(:nagger, ["Go home", 5000, 2, self])
 Ppool.async_queue(:nagger, ["Go home", 5000, 2, self])
 ```
 
-```
+```elixir
 Ppool.stop(:nagger)
 ```
 
