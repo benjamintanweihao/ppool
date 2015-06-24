@@ -12,7 +12,7 @@ defmodule Ppool do
     PpoolSupersup.start_pool(name, limit, {m,f,a})
   end
 
-  def stop(name) do
+  def stop_pool(name) do
     PpoolSupersup.stop_pool(name)
   end
 
